@@ -20,7 +20,9 @@ Puppet::Type.type(:package).provide :pear, :parent => Puppet::Provider::Package 
     command = [command(:pearcmd), "list", "-a"]
 
     begin
-      list = execute(command).collect do |set|
+      output = execute(command)
+      puts "pearlist: executed 'pear list -a'"
+      list = output.each_line do |set|
         if hash[:justme]
           if  set =~ /^hash[:justme]/
             if pearhash = pearsplit(set)
@@ -32,7 +34,7 @@ Puppet::Type.type(:package).provide :pear, :parent => Puppet::Provider::Package 
           else
             nil
           end
-        else
+        else      
           if pearhash = pearsplit(set)
             pearhash[:provider] = :pear
             pearhash
@@ -40,34 +42,34 @@ Puppet::Type.type(:package).provide :pear, :parent => Puppet::Provider::Package 
             nil
           end
         end
-
-      end.reject { |p| p.nil? }
+      end
     rescue Puppet::ExecutionFailure => detail
       # Restore the old TERM value before bailing out.
       ENV['TERM'] = old_term
-
       raise Puppet::Error, "Could not list pears: %s" % detail
     end
 
     # Restore the old TERM value.
     ENV['TERM'] = old_term
-
-    if hash[:justme]
-      return list.shift
-    else
-      return list
-    end
+    list
   end
 
   def self.pearsplit(desc)
     case desc
-    when /^No entry for terminal/: return nil
-    when /^using dumb terminal/: return nil
-    when /^INSTALLED/: return nil
-    when /^=/: return nil
-    when /^PACKAGE/: return nil
-    when /^$/: return nil
-    when /^\(no packages installed\)$/: return nil
+    when /^No entry for terminal/ 
+      return nil
+    when /^using dumb terminal/
+      return nil
+    when /^INSTALLED/
+      return nil
+    when /^=/ 
+      return nil
+    when /^PACKAGE/ 
+      return nil
+    when /^$/
+      return nil
+    when /^\(no packages installed\)$/ 
+      return nil
     when /^(\S+)\s+([.\da-z]+)\s+\S+\n/
       name = $1
       version = $2
@@ -90,22 +92,27 @@ Puppet::Type.type(:package).provide :pear, :parent => Puppet::Provider::Package 
 
   def self.channellist
     command = [command(:pearcmd), "list-channels"]
-    list = execute(command).collect do |set|
+    channels = execute(command)
+    puts "channellist: Ran 'pear list-channels'"
+    channels.each_line do |set|
       if channelhash = channelsplit(set)
         channelhash
       else
         nil
       end
-    end.reject { |p| p.nil? }
-    list
+    end
   end
 
   def self.channelsplit(desc)
     case desc
-    when /^Registered/: return nil
-    when /^=/: return nil
-    when /^Channel/: return nil
-    when /^\s+/: return nil
+    when /^Registered/
+      return nil
+    when /^=/
+      return nil
+    when /^Channel/
+      return nil
+    when /^\s+/
+      return nil
     when /^(\S+)/
       $1
     else
@@ -156,7 +163,9 @@ Puppet::Type.type(:package).provide :pear, :parent => Puppet::Provider::Package 
     # This always gets the latest version available.
     version = ''
     command = [command(:pearcmd), "remote-info", @resource[:source]]
-      list = execute(command).collect do |set|
+    result = execute(command)
+    puts "latest: command result is #{result} of class #{result.class}"
+    list = result.each_line do |set|
       if set =~ /^Latest/
         version = set.split[1]
       end
@@ -165,6 +174,7 @@ Puppet::Type.type(:package).provide :pear, :parent => Puppet::Provider::Package 
   end
 
   def query
+    puts "Calling pearlist with :justme => #{@resource[:name]}"
     self.class.pearlist(:justme => @resource[:name])
   end
 
